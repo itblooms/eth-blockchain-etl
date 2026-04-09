@@ -12,7 +12,7 @@ def extract_transactions_data(spark: SparkSession, s3_bucket_url: str) -> DataFr
         transactions_df = spark.read.parquet(f"{s3_bucket_url}/transactions/date=2026-*-*", header=True) \
             .select(
                 F.col("hash"),
-                F.col("nonce").alias("num_sender_prior_transactions"),
+                F.col("nonce"),
                 F.col("from_address"),
                 F.col("to_address"),
                 F.col("value"),
@@ -26,13 +26,14 @@ def extract_transactions_data(spark: SparkSession, s3_bucket_url: str) -> DataFr
                 F.col("receipt_contract_address"),
                 F.col("block_hash")
             )
+        logger.info("Transactions data was successfully extracted!")
+        return transactions_df
     except FileNotFoundError:
         logger.error(f"Fetching failed. There's no files at {s3_bucket_url}/transactions/")
         raise
     except Exception as e:
         logger.error(f"Transactions data extraction failed with unexpected error: {e}")
         raise
-    return transactions_df
 
 def clean_blocks_data(df: DataFrame) -> DataFrame:
     logger.info(f"Casting column types and trimming stings...")
@@ -40,10 +41,10 @@ def clean_blocks_data(df: DataFrame) -> DataFrame:
         df
         .drop_duplicates()
         .select(
-            F.trim(F.col("hash").cast(StringType())),
-            F.col("num_sender_prior_transactions").cast(LongType()),
-            F.trim(F.col("from_address").cast(StringType())), 
-            F.trim(F.col("to_address").cast(StringType())), 
+            F.trim(F.col("hash").cast(StringType())).alias("hash"),
+            F.col("nonce").cast(LongType()).alias("num_sender_prior_transactions"),
+            F.trim(F.col("from_address").cast(StringType())).alias("from_adress"), 
+            F.trim(F.col("to_address").cast(StringType())).alias("to_address"), 
             F.col("value").cast(DoubleType()),
             F.col("gas").cast(LongType()),
             F.col("gas_price").cast(LongType()),
@@ -52,8 +53,10 @@ def clean_blocks_data(df: DataFrame) -> DataFrame:
             F.col("max_fee_per_gas").cast(LongType()),
             F.col("transaction_type").cast(LongType()),
             F.col("receipt_status").cast(LongType()),
-            F.trim(F.col("receipt_contract_address").cast(StringType())),
-            F.trim(F.col("block_hash").cast(StringType()))
+            F.trim(
+                F.col("receipt_contract_address").cast(StringType())
+            ).alias("receipt_contract_address"),
+            F.trim(F.col("block_hash").cast(StringType())).alias("block_hash")
         )
     )
     logger.info("Transactions data was successfully cleaned!")
@@ -91,9 +94,9 @@ def validate_transactions_data(df: DataFrame) -> None:
             .alias("non_positive_value_violations"),
         F.sum(F.when(F.col("max_fee_per_gas") < F.col("max_priority_fee_per_gas"), 1).otherwise(0)) \
             .alias("priority_fee_exceeds_total_fee_violations")
-    )
+    ).collect()[0]
 
-    if n:=checks_df.collect()[0]["negative_num_sender_prior_transactions"] > 0:
+    if n := checks_df["negative_num_sender_prior_transactions"] > 0:
         exc = ValueError(
             f"For {n} rows in transactions table "
             "sender has less than 0 prior transactions"
@@ -103,11 +106,11 @@ def validate_transactions_data(df: DataFrame) -> None:
             exc_info=exc
         )
         raise exc
-    if n:=checks_df.collect()[0]["non_positive_value_violations"] > 0:
+    if n := checks_df["non_positive_value_violations"] > 0:
         exc = ValueError(f"For {n} rows in transactions table `value` is less than 0")
         logger.error("Check failed. Negative `value` encountered", exc_info=exc)
         raise exc
-    if n:=checks_df.collect()[0]["priority_fee_exceeds_total_fee_violations"] > 0:
+    if n := checks_df["priority_fee_exceeds_total_fee_violations"] > 0:
         exc = ValueError(
             f"For {n} rows in transactions table priority fee exceeds total fee"
         )

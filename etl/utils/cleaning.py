@@ -24,4 +24,4 @@ def ensure_schema(
         exc = ValueError(f"{table_name} table types are wrong. Incorrect fields {wrong_types}")
         logger.error(f"{table_name} table schema types mismatch: {wrong_types}", exc_info=exc)
         raise exc
-    logger.info("{table_name} data schema is valid!")
+    logger.info(f"{table_name} data schema is valid!")

@@ -20,7 +20,7 @@ def extract_blocks_data(spark: SparkSession, s3_bucket_url: str) -> DataFrame:
         logger.info(f"Fetching blocks data from {s3_bucket_url}/blocks...")
         blocks_df = spark.read.parquet(f"{s3_bucket_url}/blocks/date=2026-*-*", header=True) \
             .select(
-                F.col("date").alias("partition_date"),
+                F.col("date"),
                 F.col("number"),
                 F.col("hash"),
                 F.col("miner"), 
@@ -33,14 +33,14 @@ def extract_blocks_data(spark: SparkSession, s3_bucket_url: str) -> DataFrame:
                 F.col("transaction_count"),
                 F.col("timestamp")
             )
+        logger.info("Blocks data was successfully extracted!")
+        return blocks_df
     except FileNotFoundError:
         logger.error(f"Fetching failed. There's no files at {s3_bucket_url}/blocks/")
         raise
     except Exception as e:
         logger.error(f"Blocks data extraction failed with unexpected error: {e}")
         raise
-    logger.info("Blocks data was successfully extracted!")
-    return blocks_df
 
 def clean_blocks_data(df: DataFrame) -> DataFrame:
     logger.info(f"Casting column types, trimming stings and formatting dates...")
@@ -48,10 +48,10 @@ def clean_blocks_data(df: DataFrame) -> DataFrame:
         df
         .drop_duplicates()
         .select(
-            F.to_date(F.col("partition_date"), "yyyy-MM-dd"),
+            F.to_date(F.col("date"), "yyyy-MM-dd").alias("partition_date"),
             F.col("number").cast(LongType()),
-            F.trim(F.col("hash").cast(StringType())),
-            F.trim(F.col("miner").cast(StringType())), 
+            F.trim(F.col("hash").cast(StringType())).alias("hash"),
+            F.trim(F.col("miner").cast(StringType())).alias("miner"), 
             F.col("difficulty").cast(DoubleType()),
             F.col("total_difficulty").cast(DoubleType()),
             F.col("size").cast(LongType()),
@@ -59,7 +59,9 @@ def clean_blocks_data(df: DataFrame) -> DataFrame:
             F.col("gas_used").cast(LongType()),
             F.col("base_fee_per_gas").cast(LongType()),
             F.col("transaction_count").cast(LongType()),
-            F.from_unixtime(F.col("timestamp"), "yyyy-MM-dd HH:mm:ss")
+            F.to_timestamp(
+                F.from_unixtime(F.col("timestamp"), "yyyy-MM-dd HH:mm:ss")
+            ).alias("timestamp")
         )
     )
     logger.info("Blocks data was successfully cleaned!")
@@ -68,7 +70,7 @@ def clean_blocks_data(df: DataFrame) -> DataFrame:
 def validate_blocks_data(df: DataFrame) -> None:
     expected_schema = StructType([
         StructField("partition_date", DateType()),
-        StructField("number", StringType()),
+        StructField("number", LongType()),
         StructField("hash", StringType()),
         StructField("miner", StringType()),
         StructField("difficulty", DoubleType()),
@@ -76,7 +78,7 @@ def validate_blocks_data(df: DataFrame) -> None:
         StructField("size", LongType()),
         StructField("gas_limit", LongType()),
         StructField("gas_used", LongType()),
-        StructField("base_free_per_gas", LongType()),
+        StructField("base_fee_per_gas", LongType()),
         StructField("transaction_count", LongType()),
         StructField("timestamp", TimestampType())
     ])
@@ -89,23 +91,23 @@ def validate_blocks_data(df: DataFrame) -> None:
 
     logger.info("Checking constraints...")
     checks_df = df.select(
-        F.sum(F.when(F.col("transaction_count") <= 0, 1).otherwise(0)) \
+        F.sum(F.when(F.col("transaction_count") < 0, 1).otherwise(0)) \
             .alias("transaction_count_violations"),
         F.sum(F.when(F.col("gas_used") > F.col("gas_limit"), 1).otherwise(0)) \
             .alias("gas_used_exceeds_limit_violations"),
         F.sum(F.when(F.col("base_fee_per_gas") > F.col("gas_used"), 1).otherwise(0)) \
             .alias("base_fee_exceeds_gas_used_violations")
-    )
+    ).collect()[0]
 
-    if n:=checks_df.collect()[0]["transaction_count"] > 0:
-        exc = ValueError(f"For {n} rows in blocks table `transaction_count` <= 0")
-        logger.error("Check for positive transactions count has failed", exc_info=exc)
+    if (n := checks_df["transaction_count_violations"]) > 0:
+        exc = ValueError(f"For {n} rows in blocks table `transaction_count` < 0")
+        logger.error("Check for non-negative transactions count has failed", exc_info=exc)
         raise exc
-    if n:=checks_df.collect()[0]["gas_used_exceeds_limit_violations"] > 0:
+    if (n := checks_df["gas_used_exceeds_limit_violations"]) > 0:
         exc = ValueError(f"For {n} rows in block table `gas_used` exceeds `gas_limit`")
         logger.error("Check failed. `gas_used` > `gas_limit`", exc_info=exc)
         raise exc
-    if n:=checks_df.collect()[0]["base_fee_exceeds_gas_used_violations"] > 0:
+    if (n := checks_df["base_fee_exceeds_gas_used_violations"]) > 0:
         exc = ValueError(f"For {n} rows in blocks table `base_fee_per_gas` exceeds `gas_limit`")
         logger.error("Check failed. `base_fee_per_gas` > `gas_used`", exc_info=exc)
         raise exc

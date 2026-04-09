@@ -15,13 +15,14 @@ def extract_contracts_data(spark: SparkSession, s3_bucket_url: str) -> DataFrame
                 F.col("address"),
                 F.col("bytecode")
             )
+        logger.info("Contracts data was successfully extracted!")
+        return contracts_df
     except FileNotFoundError:
         logger.error(f"Fetching failed. There's no files at {s3_bucket_url}/contracts/")
         raise
     except Exception as e:
         logger.error(f"Contracts data extraction failed with unexpected error: {e}")
         raise
-    return contracts_df
 
 def clean_contracts_data(df: DataFrame) -> DataFrame:
     logger.info(f"Casting column types and trimming stings...")
@@ -29,8 +30,8 @@ def clean_contracts_data(df: DataFrame) -> DataFrame:
         df
         .drop_duplicates()
         .select(
-            F.trim(F.col("address").cast(StringType())),
-            F.trim(F.col("bytecode").cast(StringType()))
+            F.trim(F.col("address").cast(StringType())).alias("address"),
+            F.trim(F.col("bytecode").cast(StringType())).alias("bytecode")
         )
     )
     logger.info("Contracts data was successfully cleaned!")
