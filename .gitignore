@@ -9,5 +9,17 @@ wheels/
 # Virtual environments
 .venv
 
-Logs
+# Environment variables
+.env
+
+# Logs
 *.log
+
+# Test data
+/tests/data
+
+# TODO
+TODO.md
+
+# Sandbox
+sandbox.ipynb
