@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.types import StringType, StructField, StructType
 from etl.utils.logger import get_logger
+from etl.utils.cleaning import ensure_schema
 
 
 logger = get_logger(__name__)
@@ -40,19 +41,9 @@ def validate_contracts_data(df: DataFrame) -> None:
         StructField("address", StringType()),
         StructField("bytecode", StringType())
     ])
-    expected = {f.name: f.dataType for f in expected_schema.fields}
-    actual = {f.name: f.dataType for f in df.schema.fields}
-    logger.info("Ensuring contracts data schema...")
-
-    missing_cols = set(expected) - set(actual)
-    wrong_types = {k for k in actual if k in expected and actual[k] != expected[k]}
-
-    if missing_cols:
-        exc = ValueError(f"Contracts table schema is missing {missing_cols} columns")
-        logger.error(f"Contracts table schema mismatch: {missing_cols} are missing", exc_info=exc)
-        raise exc
-    if wrong_types:
-        exc = ValueError(f"Contracts table types are wrong. Incorrect fields {wrong_types}")
-        logger.error(f"Contracts table schema types mismatch: {wrong_types}", exc_info=exc)
-        raise exc
-    logger.info("Contracts data schema is valid!")
+    ensure_schema(
+        df=df, 
+        expected_schema=expected_schema, 
+        table_name="contracts", 
+        logger=logger
+    )

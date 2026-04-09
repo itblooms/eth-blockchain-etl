@@ -10,6 +10,7 @@ from pyspark.sql.types import (
     StructType
 )
 from etl.utils.logger import get_logger
+from etl.utils.cleaning import ensure_schema
 
 
 logger = get_logger(__name__)
@@ -58,7 +59,7 @@ def clean_blocks_data(df: DataFrame) -> DataFrame:
             F.col("gas_used").cast(LongType()),
             F.col("base_fee_per_gas").cast(LongType()),
             F.col("transaction_count").cast(LongType()),
-            F.to_timestamp(F.col("timestamp"))
+            F.from_unixtime(F.col("timestamp"), "yyyy-MM-dd HH:mm:ss")
         )
     )
     logger.info("Blocks data was successfully cleaned!")
@@ -79,22 +80,12 @@ def validate_blocks_data(df: DataFrame) -> None:
         StructField("transaction_count", LongType()),
         StructField("timestamp", TimestampType())
     ])
-    expected = {f.name: f.dataType for f in expected_schema.fields}
-    actual = {f.name: f.dataType for f in df.schema.fields}
-    logger.info("Ensuring blocks data schema...")
-
-    missing_cols = set(expected) - set(actual)
-    wrong_types = {k for k in actual if k in expected and actual[k] != expected[k]}
-
-    if missing_cols:
-        exc = ValueError(f"Blocks table schema is missing {missing_cols} columns")
-        logger.error(f"Blocks table schema mismatch: {missing_cols} are missing", exc_info=exc)
-        raise exc
-    if wrong_types:
-        exc = ValueError(f"Blocks table types are wrong. Incorrect fields {wrong_types}")
-        logger.error(f"Blocks table schema types mismatch: {wrong_types}", exc_info=exc)
-        raise exc
-    logger.info("Blocks data schema is valid!")
+    ensure_schema(
+        df=df, 
+        expected_schema=expected_schema, 
+        table_name="blocks", 
+        logger=logger
+    )
 
     logger.info("Checking constraints...")
     checks_df = df.select(
