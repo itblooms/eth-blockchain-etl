@@ -117,3 +117,15 @@ def validate_blocks_data(df: DataFrame) -> None:
         logger.error("Check failed. `base_fee_per_gas` > `gas_used`", exc_info=exc)
         raise exc
     logger.info("All checkes have been successfully passed!")
+
+
+def enrich_blocks_data(df: DataFrame) -> DataFrame:
+    logger.info("Enriching blocks data...")
+    enriched_df = df.withColumn(
+        "min_transaction_fee_percent",
+        F.round(
+            (F.col("base_fee_per_gas") * F.col("transaction_count") / F.col("gas_used") * 100),
+            2,
+        ),
+    )
+    return enriched_df
