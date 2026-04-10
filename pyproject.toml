@@ -1,5 +1,5 @@
 [project]
-name = "rent-etl"
+name = "eth-blockchain-etl"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -16,3 +16,13 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.15.10",
 ]
+
+[tool.ruff]
+line-length = 96
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+docstring-code-format = true
