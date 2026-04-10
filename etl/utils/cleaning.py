@@ -4,10 +4,10 @@ from pyspark.logger import PySparkLogger
 
 
 def ensure_schema(
-    df: DataFrame, 
-    expected_schema: StructType, 
-    table_name: str, 
-    logger: PySparkLogger
+    df: DataFrame,
+    expected_schema: StructType,
+    table_name: str,
+    logger: PySparkLogger,
 ) -> None:
     expected = {f.name: f.dataType for f in expected_schema.fields}
     actual = {f.name: f.dataType for f in df.schema.fields}
@@ -18,7 +18,10 @@ def ensure_schema(
 
     if missing_cols:
         exc = ValueError(f"{table_name} table schema is missing {missing_cols} columns")
-        logger.error(f"{table_name} table schema mismatch: {missing_cols} are missing", exc_info=exc)
+        logger.error(
+            f"{table_name} table schema mismatch: {missing_cols} are missing",
+            exc_info=exc,
+        )
         raise exc
     if wrong_types:
         exc = ValueError(f"{table_name} table types are wrong. Incorrect fields {wrong_types}")
