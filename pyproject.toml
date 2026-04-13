@@ -8,9 +8,13 @@ requires-python = ">=3.12"
 
 [dependency-groups]
 prod = [
+    "apache-airflow>=3.2.0",
+    "apache-airflow-providers-snowflake>=6.12.1",
     "pyspark>=4.1.1",
 ]
 dev = [
+    "apache-airflow>=3.2.0",
+    "apache-airflow-providers-snowflake>=6.12.1",
     "pyspark>=4.1.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",
@@ -20,9 +24,13 @@ dev = [
 [tool.ruff]
 line-length = 96
 indent-width = 4
+exclude = ["snowflake/"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 docstring-code-format = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
