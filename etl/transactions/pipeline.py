@@ -23,7 +23,7 @@ def extract_transactions_data(spark: SparkSession, s3_bucket_url: str) -> DataFr
             F.col("receipt_gas_used"),
             F.col("max_priority_fee_per_gas"),
             F.col("max_fee_per_gas"),
-            F.col("transacrion_type"),
+            F.col("transaction_type"),
             F.col("receipt_status"),
             F.col("receipt_contract_address"),
             F.col("block_hash"),
@@ -38,12 +38,12 @@ def extract_transactions_data(spark: SparkSession, s3_bucket_url: str) -> DataFr
         raise
 
 
-def clean_blocks_data(df: DataFrame) -> DataFrame:
+def clean_transactions_data(df: DataFrame) -> DataFrame:
     logger.info("Casting column types and trimming stings...")
     transformed_df = df.drop_duplicates().select(
         F.trim(F.col("hash").cast(StringType())).alias("hash"),
         F.col("nonce").cast(LongType()).alias("num_sender_prior_transactions"),
-        F.trim(F.col("from_address").cast(StringType())).alias("from_adress"),
+        F.trim(F.col("from_address").cast(StringType())).alias("from_address"),
         F.trim(F.col("to_address").cast(StringType())).alias("to_address"),
         F.col("value").cast(DoubleType()),
         F.col("gas").cast(LongType()),

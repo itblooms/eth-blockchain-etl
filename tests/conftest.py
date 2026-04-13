@@ -12,4 +12,3 @@ def spark():
         .getOrCreate()
     )
     yield spark
-    
