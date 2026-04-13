@@ -25,10 +25,50 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12 --quiet
 
-      - name: Install dependencies
-        run: uv sync --frozen --dev
+      - name: Install Dependencies
+        run: uv sync --frozen --group dev
 
       - name: Run Lint and Format Check
         run: |
           uv run ruff check --output-format=github .
           uv run ruff format --check .
+
+  test:
+    name: Unit Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.0.0
+
+      - name: Set up Python
+        run: uv python install 3.12 --quiet
+      
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install Python Dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Run Unit Tests with Coverage
+        run: |
+          uv run pytest tests/ \
+            --cov=etl \
+            --cov-report=term-missing \
+            --cov-report=html \
+            --durations=10 \
+            -q
+
+      - name: Upload HTML Coverage Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 14
