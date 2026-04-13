@@ -50,3 +50,12 @@ def validate_contracts_data(df: DataFrame) -> None:
         table_name="contracts",
         logger=logger,
     )
+
+
+def load_contracts_data(df: DataFrame, snowflake_options: dict[str, str]) -> None:
+    df.write \
+        .format("net.snowflake.spark.esnowflake") \
+        .options(**snowflake_options) \
+        .option("dbtable", "CONTRACTS") \
+        .mode("append") \
+        .save()  # fmt: skip

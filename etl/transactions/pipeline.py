@@ -119,3 +119,12 @@ def validate_transactions_data(df: DataFrame) -> None:
         logger.error("Check failed. Total fee can't be less than prior fee", exc_info=exc)
         raise exc
     logger.info("All checkes have been successfully passed!")
+
+
+def load_transactions_data(df: DataFrame, snowflake_options: dict[str, str]) -> None:
+    df.write \
+        .format("net.snowflake.spark.esnowflake") \
+        .options(**snowflake_options) \
+        .option("dbtable", "TRANSACTIONS") \
+        .mode("append") \
+        .save()  # fmt: skip

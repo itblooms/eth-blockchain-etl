@@ -124,8 +124,22 @@ def enrich_blocks_data(df: DataFrame) -> DataFrame:
     enriched_df = df.withColumn(
         "min_transaction_fee_percent",
         F.round(
-            (F.col("base_fee_per_gas") * F.col("transaction_count") / F.col("gas_used") * 100),
+            (
+                F.col("base_fee_per_gas").cast(DoubleType())
+                * F.col("transaction_count")
+                / F.col("gas_used")
+                * 100
+            ),
             2,
         ),
     )
     return enriched_df
+
+
+def load_blocks_data(df: DataFrame, snowflake_options: dict[str, str]) -> None:
+    df.write \
+        .format("net.snowflake.spark.esnowflake") \
+        .options(**snowflake_options) \
+        .option("dbtable", "BLOCKS") \
+        .mode("append") \
+        .save()  # fmt: skip
