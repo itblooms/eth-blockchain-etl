@@ -1,10 +1,7 @@
 import pytest
 from pyspark.sql.types import StringType, DoubleType, LongType, StructField, StructType
-
-from etl.transactions.pipeline import (
-    clean_transactions_data,
-    validate_transactions_data,
-)
+from etl.pipelines.transactions.clean import clean_transactions_data
+from etl.pipelines.transactions.validate import validate_transactions_data
 
 
 def test_clean_transactions_data_removes_duplicates(spark):

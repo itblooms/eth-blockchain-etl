@@ -8,12 +8,9 @@ from pyspark.sql.types import (
     StructField,
     StructType,
 )
-
-from etl.blocks.pipeline import (
-    clean_blocks_data,
-    validate_blocks_data,
-    enrich_blocks_data,
-)
+from etl.pipelines.blocks.clean import clean_blocks_data
+from etl.pipelines.blocks.validate import validate_blocks_data
+from etl.pipelines.blocks.enrich import enrich_blocks_data
 
 
 def test_clean_blocks_data_removes_duplicates(spark):
