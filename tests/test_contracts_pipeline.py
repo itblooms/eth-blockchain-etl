@@ -1,10 +1,7 @@
 import pytest
 from pyspark.sql.types import StringType, StructField, StructType
-
-from etl.contracts.pipeline import (
-    clean_contracts_data,
-    validate_contracts_data,
-)
+from etl.pipelines.contracts.clean import clean_contracts_data
+from etl.pipelines.contracts.validate import validate_contracts_data
 
 
 def test_clean_contracts_data_removes_duplicates(spark):
