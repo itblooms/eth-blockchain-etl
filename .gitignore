@@ -6,6 +6,10 @@ dist/
 wheels/
 *.egg-info
 
+# Unnecessary cache
+.pytest_cache
+.ruff_cache 
+
 # Virtual environments
 .venv
 
@@ -13,6 +17,7 @@ wheels/
 .env
 
 # Logs
+/logs
 *.log
 
 # Test data
